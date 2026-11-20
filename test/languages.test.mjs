@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { LANGUAGES, DEFAULT_PAIR, findLanguage } from "../languages.js";
 
 test("default pair is English and Hindi", () => {
-  assert.deepEqual(DEFAULT_PAIR, ["en", "hi"]);
+  assert.deepEqual(DEFAULT_PAIR, ["hi", "en"]);
   assert.equal(findLanguage("en").speech, "en-US");
   assert.equal(findLanguage("hi").speech, "hi-IN");
 });

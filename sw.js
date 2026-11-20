@@ -1,5 +1,6 @@
 // Caches the app shell so the page opens offline. Translation and speech requests always go to the network.
-const CACHE = "translator-v2";
+// Same-site files are fetched fresh when online (so updates reach the phone), and the cache is used only offline.
+const CACHE = "translator-v3";
 const SHELL = ["./", "index.html", "app.js", "translate.js", "languages.js", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -14,8 +15,13 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin) return; // never cache third-party translation calls
+  if (e.request.method !== "GET" || url.origin !== self.location.origin) return; // never cache third-party calls
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request))
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

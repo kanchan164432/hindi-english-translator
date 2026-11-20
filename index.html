@@ -26,8 +26,8 @@
     main { max-width:640px; margin:0 auto; padding:0 16px 32px; }
     .buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
     button.talk { border:0; border-radius:16px; padding:22px 10px; font-size:18px; font-weight:600; color:#fff; cursor:pointer; min-height:88px; }
-    button.talk.a { background:var(--blue); }
-    button.talk.b { background:var(--green); }
+    button.talk.a { background:var(--green); }
+    button.talk.b { background:var(--blue); }
     button.talk[disabled] { opacity:.5; cursor:not-allowed; }
     button.talk.listening { animation:pulse 1s infinite; }
     @keyframes pulse { 50% { transform:scale(1.03); box-shadow:0 0 0 8px rgba(31,111,235,.2); } }
@@ -66,14 +66,14 @@
     </label>
     <div class="menu-actions">
       <button id="swap" type="button">⇄ Swap</button>
-      <button id="resetLangs" type="button">Reset to English ↔ Hindi</button>
+      <button id="resetLangs" type="button">Reset to Hindi ↔ English</button>
     </div>
   </nav>
 
   <main>
     <div class="buttons">
-      <button id="talkA" class="talk a"></button>
-      <button id="talkB" class="talk b"></button>
+      <button id="talkA" class="talk a">🎤 Speak Hindi<br><small>→ English</small></button>
+      <button id="talkB" class="talk b">🎤 Speak English<br><small>→ Hindi</small></button>
     </div>
     <div id="status" class="status">Tap a button and speak. Tap again to stop.</div>
     <div id="live" class="live" aria-live="polite"></div>

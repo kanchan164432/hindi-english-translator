@@ -36,7 +36,8 @@ export const LANGUAGES = [
   { code: "tl", name: "Filipino (Tagalog)", speech: "fil-PH" },
 ];
 
-export const DEFAULT_PAIR = ["en", "hi"];
+// Left side = Hindi, right side = English by default.
+export const DEFAULT_PAIR = ["hi", "en"];
 
 export function findLanguage(code) {
   return LANGUAGES.find((l) => l.code === code) || null;
