@@ -43,7 +43,8 @@ function speak(text, lang) {
 
 function renderLog() {
   els.log.innerHTML = "";
-  for (const item of history) {
+  // Newest first: history is stored oldest-first, so render it reversed.
+  for (const item of [...history].reverse()) {
     const li = document.createElement("li");
     const src = document.createElement("div");
     src.className = "src";
