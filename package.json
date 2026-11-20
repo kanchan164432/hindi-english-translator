@@ -1,0 +1,7 @@
+{
+  "name": "hindi-english-translator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/translate.test.mjs", "start": "python3 -m http.server ${PORT:-8080}" }
+}
