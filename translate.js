@@ -8,7 +8,14 @@
 
 export const MAX_CHARS = 450; // keep requests small (MyMemory free tier limit is about 500 bytes)
 
-const LANG = { en: "en", hi: "hi" };
+// Language codes are letters, optionally with a region (e.g. "en", "zh-CN"). Anything else is rejected
+// so it can't alter the request URL.
+const CODE = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
+
+export function checkCodes(from, to) {
+  if (!CODE.test(from) || !CODE.test(to)) throw new Error(`Unsupported language code: ${from} → ${to}`);
+  if (from === to) throw new Error("Pick two different languages.");
+}
 
 export function clampText(text) {
   const t = String(text || "").trim();
@@ -25,9 +32,10 @@ export function parseGoogle(data) {
 
 export async function translateGoogle(text, from, to, fetchImpl = fetch) {
   const q = clampText(text);
+  checkCodes(from, to);
   const url =
     "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t" +
-    `&sl=${LANG[from]}&tl=${LANG[to]}&q=${encodeURIComponent(q)}`;
+    `&sl=${from}&tl=${to}&q=${encodeURIComponent(q)}`;
   const res = await fetchImpl(url);
   if (!res.ok) throw new Error(`Google translate failed (HTTP ${res.status}).`);
   return parseGoogle(await res.json());
@@ -35,9 +43,10 @@ export async function translateGoogle(text, from, to, fetchImpl = fetch) {
 
 export async function translateMyMemory(text, from, to, fetchImpl = fetch) {
   const q = clampText(text);
+  checkCodes(from, to);
   const url =
     "https://api.mymemory.translated.net/get?" +
-    `q=${encodeURIComponent(q)}&langpair=${LANG[from]}|${LANG[to]}`;
+    `q=${encodeURIComponent(q)}&langpair=${from}|${to}`;
   const res = await fetchImpl(url);
   if (!res.ok) throw new Error(`MyMemory failed (HTTP ${res.status}).`);
   const data = await res.json();

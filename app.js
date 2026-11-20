@@ -1,44 +1,71 @@
 import { translateWithFallback } from "./translate.js";
+import { LANGUAGES, DEFAULT_PAIR, findLanguage } from "./languages.js";
 
-// Speech recognition / synthesis language tags for each side.
-const SPEECH = { en: "en-US", hi: "hi-IN" };
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
 const $ = (id) => document.getElementById(id);
+
 const els = {
-  talkHi: $("talkHi"), talkEn: $("talkEn"), status: $("status"), live: $("live"),
+  talkA: $("talkA"), talkB: $("talkB"), status: $("status"), live: $("live"),
   typedForm: $("typedForm"), typedText: $("typedText"), typedDir: $("typedDir"),
   autoSpeak: $("autoSpeak"), log: $("log"), clear: $("clear"),
+  menuBtn: $("menuBtn"), menu: $("menu"), langA: $("langA"), langB: $("langB"),
+  swap: $("swap"), resetLangs: $("resetLangs"),
 };
 
 const HISTORY_KEY = "translator.history.v1";
+const PAIR_KEY = "translator.pair.v1";
+
+// The two languages in use. "a" and "b" are the two sides of the conversation.
+let pair = loadPair();
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
 let recognizer = null;
-let activeFrom = null; // "hi" or "en" while listening
+
+function loadPair() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PAIR_KEY) || "null");
+    if (Array.isArray(saved) && saved.length === 2 && saved.every(findLanguage) && saved[0] !== saved[1]) return saved;
+  } catch (_) { /* fall through to default */ }
+  return [...DEFAULT_PAIR];
+}
+
+const langName = (code) => (findLanguage(code) || { name: code }).name;
+const speechTag = (code) => (findLanguage(code) || { speech: code }).speech;
+const otherSide = (side) => (side === "a" ? "b" : "a");
 
 function setStatus(msg, isError = false) {
   els.status.textContent = msg;
   els.status.classList.toggle("error", isError);
 }
 
-function pickVoice(lang) {
+function pickVoice(code) {
+  const want = speechTag(code).toLowerCase();
   const voices = speechSynthesis.getVoices();
-  const want = SPEECH[lang].toLowerCase();
   return (
     voices.find((v) => v.lang.toLowerCase() === want) ||
-    voices.find((v) => v.lang.toLowerCase().startsWith(lang)) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith(code.toLowerCase())) ||
     null
   );
 }
 
-function speak(text, lang) {
+function speak(text, code) {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = SPEECH[lang];
-  const voice = pickVoice(lang);
+  u.lang = speechTag(code);
+  const voice = pickVoice(code);
   if (voice) u.voice = voice;
   speechSynthesis.speak(u);
+}
+
+// Button labels, typed-direction options and the menu all follow the chosen pair.
+function renderPair() {
+  const [a, b] = pair;
+  els.talkA.innerHTML = `🎤 Speak ${langName(a)}<br><small>→ ${langName(b)}</small>`;
+  els.talkB.innerHTML = `🎤 Speak ${langName(b)}<br><small>→ ${langName(a)}</small>`;
+  els.typedDir.innerHTML = "";
+  els.typedDir.append(new Option(`${a} → ${b}`, "a"), new Option(`${b} → ${a}`, "b"));
+  els.langA.value = a;
+  els.langB.value = b;
 }
 
 function renderLog() {
@@ -54,7 +81,7 @@ function renderLog() {
     dst.textContent = item.translated;
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.textContent = `${item.from.toUpperCase()} → ${item.to.toUpperCase()} · ${item.provider} · ${new Date(item.at).toLocaleTimeString()}`;
+    meta.textContent = `${item.from} → ${item.to} · ${item.provider} · ${new Date(item.at).toLocaleTimeString()}`;
     const replay = document.createElement("button");
     replay.className = "replay";
     replay.textContent = "🔊 Replay";
@@ -70,8 +97,7 @@ function saveHistory() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
-async function handleUtterance(text, from) {
-  const to = from === "hi" ? "en" : "hi";
+async function handleUtterance(text, from, to) {
   setStatus("Translating…");
   try {
     const { text: translated, provider } = await translateWithFallback(text, from, to, "google");
@@ -86,31 +112,34 @@ async function handleUtterance(text, from) {
   }
 }
 
-function setBusy(listeningFrom) {
-  els.talkHi.classList.toggle("listening", listeningFrom === "hi");
-  els.talkEn.classList.toggle("listening", listeningFrom === "en");
-  els.talkHi.disabled = listeningFrom === "en";
-  els.talkEn.disabled = listeningFrom === "hi";
+function setBusy(side) {
+  els.talkA.classList.toggle("listening", side === "a");
+  els.talkB.classList.toggle("listening", side === "b");
+  els.talkA.disabled = side === "b";
+  els.talkB.disabled = side === "a";
 }
 
-function startListening(from) {
+// side is "a" or "b": which language the speaker is using.
+function startListening(side) {
   if (!SR) {
     setStatus("This browser has no speech recognition. Use Chrome or Edge.", true);
     return;
   }
   if (recognizer) { recognizer.stop(); return; }
 
+  const from = pair[side === "a" ? 0 : 1];
+  const to = pair[side === "a" ? 1 : 0];
+
   recognizer = new SR();
-  recognizer.lang = SPEECH[from];
+  recognizer.lang = speechTag(from);
   recognizer.interimResults = true;
   recognizer.continuous = false;
   recognizer.maxAlternatives = 1;
-  activeFrom = from;
   let finalText = "";
 
   recognizer.onstart = () => {
-    setBusy(from);
-    setStatus(from === "hi" ? "Listening in Hindi… tap again to stop." : "Listening in English… tap again to stop.");
+    setBusy(side);
+    setStatus(`Listening in ${langName(from)}… tap again to stop.`);
     els.live.textContent = "";
   };
   recognizer.onresult = (event) => {
@@ -127,6 +156,7 @@ function startListening(from) {
       "not-allowed": "Microphone permission was denied. Allow the mic for this site.",
       "no-speech": "I did not hear anything. Try again.",
       "audio-capture": "No microphone found.",
+      "language-not-supported": `Your phone or browser cannot listen in ${langName(from)}.`,
       network: "Speech service unreachable. Check your internet connection.",
     }[event.error] || `Speech error: ${event.error}`;
     setStatus(msg, true);
@@ -135,8 +165,7 @@ function startListening(from) {
     const text = finalText.trim();
     recognizer = null;
     setBusy(null);
-    activeFrom = null;
-    if (text) handleUtterance(text, from);
+    if (text) handleUtterance(text, from, to);
     else if (!els.status.classList.contains("error")) setStatus("Nothing recognized. Try again.");
   };
 
@@ -148,17 +177,48 @@ function startListening(from) {
   }
 }
 
-els.talkHi.addEventListener("click", () => (activeFrom === "hi" || !activeFrom ? startListening("hi") : null));
-els.talkEn.addEventListener("click", () => (activeFrom === "en" || !activeFrom ? startListening("en") : null));
+// Changing the languages: two different languages, saved for next time.
+function setPair(a, b) {
+  if (a === b) {
+    setStatus("Pick two different languages.", true);
+    renderPair();
+    return;
+  }
+  pair = [a, b];
+  localStorage.setItem(PAIR_KEY, JSON.stringify(pair));
+  renderPair();
+  setStatus(`Now translating ${langName(a)} ↔ ${langName(b)}.`);
+}
+
+// Menu: a hamburger button toggles the language panel.
+function setMenu(open) {
+  els.menu.hidden = !open;
+  els.menuBtn.setAttribute("aria-expanded", String(open));
+}
+
+for (const lang of LANGUAGES) {
+  els.langA.add(new Option(lang.name, lang.code));
+  els.langB.add(new Option(lang.name, lang.code));
+}
+
+// A tap starts listening, or stops it if this side is already listening (the other side is disabled then).
+els.talkA.addEventListener("click", () => startListening("a"));
+els.talkB.addEventListener("click", () => startListening("b"));
 
 els.typedForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const text = els.typedText.value.trim();
   if (!text) return;
-  const [from] = els.typedDir.value.split("-");
-  handleUtterance(text, from);
+  const [from, to] = els.typedDir.value === "a" ? [pair[0], pair[1]] : [pair[1], pair[0]];
+  handleUtterance(text, from, to);
   els.typedText.value = "";
 });
+
+els.menuBtn.addEventListener("click", () => setMenu(els.menu.hidden));
+els.langA.addEventListener("change", () => setPair(els.langA.value, pair[1]));
+els.langB.addEventListener("change", () => setPair(pair[0], els.langB.value));
+els.swap.addEventListener("click", () => setPair(pair[1], pair[0]));
+els.resetLangs.addEventListener("click", () => setPair(...DEFAULT_PAIR));
 
 els.clear.addEventListener("click", () => {
   history = [];
@@ -167,7 +227,7 @@ els.clear.addEventListener("click", () => {
   els.live.textContent = "";
 });
 
-if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};
+renderPair();
 renderLog();
 
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {

@@ -46,3 +46,20 @@ test("fallback reports every failure when all providers fail", async () => {
   const fake = async () => ({ ok: false, status: 500, json: async () => ({}) });
   await assert.rejects(translateWithFallback("Hello", "en", "hi", "google", fake), /All free translators failed/);
 });
+
+test("any language pair builds the right request", async () => {
+  let seen;
+  const fake = async (url) => { seen = url; return okJson([[["Bonjour", "Hello"]]]); };
+  assert.equal(await translateGoogle("Hello", "es", "fr", fake), "Bonjour");
+  assert.match(seen, /sl=es&tl=fr/);
+  let mm;
+  const fakeMM = async (url) => { mm = url; return okJson({ responseStatus: 200, responseData: { translatedText: "你好" } }); };
+  assert.equal(await translateMyMemory("Hello", "en", "zh-CN", fakeMM), "你好");
+  assert.match(mm, /langpair=en\|zh-CN/);
+});
+
+test("rejects unsafe or identical language codes", async () => {
+  const fake = async () => okJson([[["x", "y"]]]);
+  await assert.rejects(translateGoogle("Hi", "en&tl=x", "fr", fake), /Unsupported language code/);
+  await assert.rejects(translateGoogle("Hi", "en", "en", fake), /different languages/);
+});

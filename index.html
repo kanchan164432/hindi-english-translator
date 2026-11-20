@@ -4,22 +4,30 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#1f6feb" />
-  <meta name="description" content="Free English and Hindi voice translator" />
+  <meta name="description" content="Free voice translator for any two languages" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <title>Hindi ↔ English Translator</title>
+  <title>Language Translator</title>
   <style>
     :root { --bg:#f5f7fb; --card:#fff; --ink:#1d2433; --muted:#6b7280; --blue:#1f6feb; --green:#15803d; --red:#b91c1c; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif; background:var(--bg); color:var(--ink); }
-    header { padding:16px; text-align:center; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif; background:var(--bg); color:var(--ink); }
+    header { position:relative; padding:16px 56px; text-align:center; }
     header h1 { font-size:20px; margin:0; }
     header p { margin:4px 0 0; color:var(--muted); font-size:14px; }
+    .menu-btn { position:absolute; left:12px; top:12px; width:44px; height:44px; border:0; border-radius:10px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.08); font-size:22px; cursor:pointer; }
+    .menu { max-width:640px; margin:0 auto 8px; padding:14px; background:var(--card); border-radius:14px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .menu[hidden] { display:none; }
+    .menu h2 { font-size:16px; margin:0 0 10px; }
+    .menu label { display:block; font-size:14px; color:var(--muted); margin-bottom:10px; }
+    .menu select { display:block; width:100%; margin-top:4px; padding:10px; font-size:16px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; }
+    .menu-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .menu-actions button { padding:10px 14px; font-size:14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; }
     main { max-width:640px; margin:0 auto; padding:0 16px 32px; }
     .buttons { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:12px 0; }
     button.talk { border:0; border-radius:16px; padding:22px 10px; font-size:18px; font-weight:600; color:#fff; cursor:pointer; min-height:88px; }
-    button.talk.hi { background:var(--green); }
-    button.talk.en { background:var(--blue); }
+    button.talk.a { background:var(--blue); }
+    button.talk.b { background:var(--green); }
     button.talk[disabled] { opacity:.5; cursor:not-allowed; }
     button.talk.listening { animation:pulse 1s infinite; }
     @keyframes pulse { 50% { transform:scale(1.03); box-shadow:0 0 0 8px rgba(31,111,235,.2); } }
@@ -43,23 +51,36 @@
 </head>
 <body>
   <header>
-    <h1>Hindi ↔ English Translator</h1>
+    <button id="menuBtn" class="menu-btn" aria-label="Choose languages" aria-expanded="false" aria-controls="menu">☰</button>
+    <h1>Language Translator</h1>
     <p>Free. Speak, read the translation, and hear it spoken.</p>
   </header>
+
+  <nav id="menu" class="menu" hidden>
+    <h2>Choose two languages</h2>
+    <label>Language 1
+      <select id="langA"></select>
+    </label>
+    <label>Language 2
+      <select id="langB"></select>
+    </label>
+    <div class="menu-actions">
+      <button id="swap" type="button">⇄ Swap</button>
+      <button id="resetLangs" type="button">Reset to English ↔ Hindi</button>
+    </div>
+  </nav>
+
   <main>
     <div class="buttons">
-      <button id="talkHi" class="talk hi">🎤 Speak Hindi<br><small>→ English</small></button>
-      <button id="talkEn" class="talk en">🎤 Speak English<br><small>→ Hindi</small></button>
+      <button id="talkA" class="talk a"></button>
+      <button id="talkB" class="talk b"></button>
     </div>
     <div id="status" class="status">Tap a button and speak. Tap again to stop.</div>
     <div id="live" class="live" aria-live="polite"></div>
 
     <form id="typedForm" class="typed">
       <input id="typedText" type="text" placeholder="Or type here…" maxlength="450" autocomplete="off" />
-      <select id="typedDir" aria-label="Direction">
-        <option value="en-hi">EN → HI</option>
-        <option value="hi-en">HI → EN</option>
-      </select>
+      <select id="typedDir" aria-label="Direction"></select>
       <button type="submit">Go</button>
     </form>
 
@@ -70,7 +91,7 @@
     <ul id="log" class="log"></ul>
 
     <p class="note">
-      Speech recognition works best in Chrome or Edge (Android or desktop). Use the built-in microphone in a quiet room.
+      Speech recognition works best in Chrome or Edge (Android or desktop) and needs the language installed on your phone.
       Translations come from free public services (Google Translate endpoint, MyMemory as a backup), so quality varies and
       they may be rate-limited. Do not rely on this alone for medical, legal, bank, or immigration conversations.
     </p>

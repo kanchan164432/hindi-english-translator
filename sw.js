@@ -1,6 +1,6 @@
 // Caches the app shell so the page opens offline. Translation and speech requests always go to the network.
-const CACHE = "translator-v1";
-const SHELL = ["./", "index.html", "app.js", "translate.js", "manifest.webmanifest", "icon.svg"];
+const CACHE = "translator-v2";
+const SHELL = ["./", "index.html", "app.js", "translate.js", "languages.js", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
